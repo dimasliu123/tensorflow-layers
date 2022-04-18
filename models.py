@@ -27,7 +27,12 @@ class PositionEmbedding(tf.keras.layers.Layer):
         return config
 
 class Transformer(tf.keras.layers.Layer):
-	def __init__(self, embed_dim : int, ff_dim : int, num_heads : int, act_ff : str ="gelu", **kwargs):
+	def __init__(self, 
+                 embed_dim : int, 
+                 ff_dim : int, 
+                 num_heads : int, 
+                 act_ff : str ="gelu", 
+                 **kwargs):
 		super(Transformer, self).__init__()
 		self.embed_dim = embed_dim
 		self.ff_dim = ff_dim
@@ -60,7 +65,14 @@ class Transformer(tf.keras.layers.Layer):
 		return config
 
 class CausalTransformer(tf.keras.layers.Layer):
-    def __init__(self, embed_dim : int, ff_dim : int, num_heads : int, act_ff : str = "gelu", use_dropout :bool = False, **kwargs):
+    def __init__(self, 
+                 embed_dim : int, 
+                 ff_dim : int, 
+                 num_heads : int, 
+                 act_ff : str = "gelu", 
+                 use_dropout : bool = False, 
+                 **kwargs):
+
         self.embed_dim = embed_dim
         self.ff_dim = ff_dim
         self.num_heads = num_heads
@@ -101,8 +113,14 @@ class CausalTransformer(tf.keras.layers.Layer):
         return config
 
 class VectorQuantizer(layers.Layer):
-    def __init__(self, num_embed, embed_dim, beta=0.25, w_init = tf.random_uniform_initializer(), **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, 
+                 num_embed : int, 
+                 embed_dim : int, 
+                 beta : float=0.25, 
+                 w_init = tf.random_uniform_initializer(), 
+                 **kwargs):
+
+        super(VectorQuantizer, self).__init__(**kwargs)
         self.embed_dim = embed_dim
         self.num_embed = num_embed
         self.beta = beta
@@ -130,3 +148,14 @@ class VectorQuantizer(layers.Layer):
         distances = (tf.reduce_sum(flattened_inputs ** 2, axis=1, keepdims=True) + tf.reduce_sum(self.embeddings ** 2, axis=0) - 2 * similarity)
         encoding_indices = tf.argmin(distances, axis=1)
         return encoding_indices
+
+    def get_config(self, **kwargs):
+        config = super(VectorQuantizer, self).get_config()
+        config.update({
+            "embed_dim" : self.embed_dim,
+            "num_embed" : self.num_embed,
+            "beta" : self.beta,
+            "w_init" : self.w_init,
+            "embedding" : self.embedding
+        })
+        return config
