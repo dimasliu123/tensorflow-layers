@@ -1,7 +1,12 @@
 import tensorflow as tf
 
 class PositionEmbedding(tf.keras.layers.Layer):
-    def __init__(self, embed_dim : int, vocab_size : int, max_len : int, **kwargs):
+    def __init__(self, 
+					 embed_dim : int, 
+					 vocab_size : int, 
+					 max_len : int, 
+					 **kwargs):
+
         self.embed_dim = embed_dim
         self.vocab_size = vocab_size
         self.max_len = max_len
@@ -36,7 +41,7 @@ class Transformer(tf.keras.layers.Layer):
 		super(Transformer, self).__init__()
 		self.embed_dim = embed_dim
 		self.ff_dim = ff_dim
-        self.act_ff = act_ff
+		self.act_ff = act_ff
 		self.num_heads = num_heads
 		self.att = tf.keras.layers.MultiHeadAttention(num_heads, key_dim=embed_dim)
 		self.ffn = tf.keras.Sequential([tf.keras.layers.Dense(ff_dim, activation=tf.nn.gelu if act_ff == "gelu" else tf.nn.relu),
@@ -56,7 +61,7 @@ class Transformer(tf.keras.layers.Layer):
 			'embed_dim' : self.embed_dim,
 			'ff_dim' : self.ff_dim,
 			'num_heads' : self.num_heads,
-            'act_ff' : self.act_ff,
+			'act_ff' : self.act_ff,
 			'att' : self.att,
 			'ffn' : self.ffn,
 			'layernorm1' : self.layernorm1,
