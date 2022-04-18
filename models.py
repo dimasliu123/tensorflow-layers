@@ -38,6 +38,7 @@ class Transformer(tf.keras.layers.Layer):
                  num_heads : int, 
                  act_ff : str ="gelu", 
                  **kwargs):
+
 		super(Transformer, self).__init__()
 		self.embed_dim = embed_dim
 		self.ff_dim = ff_dim
