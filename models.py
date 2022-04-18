@@ -2,10 +2,10 @@ import tensorflow as tf
 
 class PositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, 
-					 embed_dim : int, 
-					 vocab_size : int, 
-					 max_len : int, 
-					 **kwargs):
+                 embed_dim : int, 
+                 vocab_size : int, 
+                 max_len : int, 
+                 **kwargs):
 
         self.embed_dim = embed_dim
         self.vocab_size = vocab_size
