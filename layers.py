@@ -10,13 +10,16 @@ class PositionEmbedding(tf.keras.layers.Layer):
         self.embed_dim = embed_dim
         self.vocab_size = vocab_size
         self.max_len = max_len
-        self.vocab_embed = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
-        self.pos_embed = tf.keras.layers.Embedding(input_dim=max_len, output_dim=embed_dim) 
-        self.pos = tf.range(start=0, limit=max_len, delta=1)
+
+    def build(self, input_shape):
+        self.token_emb = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_dim)
+        self.pos_emb = tf.keras.layers.Embedding(input_dim=self.max_len, output_dim=self.embed_dim)
 
     def call(self, inputs):
+        maxLen = tf.shape(inputs)[-1]
+        pos = tf.range(start=0, limit=maxLen, delta=1)
         x1 = self.vocab_embed(inputs) 
-        x2 = self.pos_embed(self.pos)
+        x2 = self.pos_embed(pos)
         return x1 + x2
 
     def get_config(self, **kwargs):
@@ -25,9 +28,6 @@ class PositionEmbedding(tf.keras.layers.Layer):
             "embed_dim" : self.embed_dim,
             "vocab_size" : self.vocab_size,
             "max_len" : self.max_len,
-            "vocab_embed" : self.vocab_embed,
-            "pos_embed" : self.pos_embed,
-            "pos" : self.pos
         })
         return config
 
@@ -37,6 +37,7 @@ class Transformer(tf.keras.layers.Layer):
                  ff_dim : int, 
                  num_heads : int, 
                  act_ff : str ="gelu", 
+                 use_dropout : bool = False,
                  **kwargs):
 
 		super(Transformer, self).__init__()
@@ -44,17 +45,32 @@ class Transformer(tf.keras.layers.Layer):
 		self.ff_dim = ff_dim
 		self.act_ff = act_ff
 		self.num_heads = num_heads
-		self.att = tf.keras.layers.MultiHeadAttention(num_heads, key_dim=embed_dim)
-		self.ffn = tf.keras.Sequential([tf.keras.layers.Dense(ff_dim, activation=tf.nn.gelu if act_ff == "gelu" else tf.nn.relu),
-                                         tf.keras.layers.Dense(embed_dim), ])
-		self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-		self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+
+    def build(self, input_shape):
+        self.att = tf.keras.layers.MultiHeadAttention(num_heads = self.num_heads, key_dim = self.embed_dim)
+        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.ffn = tf.keras.Sequential([ tf.keras.layers.Dense(self.ff_dim, activation = tf.nn.gelu if act_ff == "gelu" else tf.nn.relu),
+                                         tf.keras.layers.Dense(self.embed_dim) ])
+        if self.use_dropout :
+            self.dropout1 = tf.keras.layers.Dropout(0.1)
+            self.dropout2 = tf.keras.layers.Dropout(0.1)
 
 	def call(self, inputs):
-		att = self.att(inputs, inputs)
-		x = self.layernorm1(att + inputs)
-		out = self.ffn(x)
-		return self.layernorm2(out + x)
+        if self.use_dropout :
+            att = self.att(query=inputs[0], key=inputs[1], key=inputs[2])
+            att = self.dropout1(att, training=training)
+            x = self.layernorm1(att + inputs[0] + inputs[1] + inupts[2])
+            out = self.ffn(x)
+            out = self.dropout2(out, training=training)
+            return self.layernorm2(out + x)
+
+        else : 
+            att = self.att(inputs, inputs)
+            x = self.layernorm1(att + inputs)
+            out = self.ffn(x)
+            return self.layernorm2(out + x)
+
 
 	def get_config(self):
 		config = super(Transformer, self).get_config()
@@ -63,10 +79,7 @@ class Transformer(tf.keras.layers.Layer):
 			'ff_dim' : self.ff_dim,
 			'num_heads' : self.num_heads,
 			'act_ff' : self.act_ff,
-			'att' : self.att,
-			'ffn' : self.ffn,
-			'layernorm1' : self.layernorm1,
-			'layernorm2' : self.layernorm2
+            'use_dropout' : self.use_dropout,
 		})
 		return config
 
@@ -83,8 +96,11 @@ class CausalTransformer(tf.keras.layers.Layer):
         self.ff_dim = ff_dim
         self.num_heads = num_heads
         self.act_ff = act_ff
-        self.mha = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
-        self.ffn = tf.keras.Sequential([tf.keras.layers.Dense(ff_dim, activation=tf.nn.gelu if act_ff == "gelu" else tf.nn.relu), tf.keras.layers.Dense(embed_dim, ) ])
+
+    def build(self, input_shape):
+        self.mha = tf.keras.layers.MultiHeadAttention(num_heads = self.num_heads, key_dim = self.embed_dim)
+        self.ffn = tf.keras.Sequential([ tf.keras.layers.Dense(self.ff_dim, activation = tf.nn.gelu if act_ff == "gelu" else tf.nn.relu), 
+                                         tf.keras.layers.Dense(self.embed_dim) ])
         self.norm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.norm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
 
@@ -111,10 +127,6 @@ class CausalTransformer(tf.keras.layers.Layer):
            "ff_dim" : self.ff_dim,
            "num_heads" : self.num_heads,
            "act_ff" : self.act_ff,
-           "mha" : self.mha,
-           "ffn" : self.ffn,
-           "norm1" : self.norm1,
-           "norm2" : self.norm2
         })
         return config
 
@@ -123,14 +135,15 @@ class VectorQuantizer(layers.Layer):
                  num_embed : int, 
                  embed_dim : int, 
                  beta : float=0.25, 
-                 w_init = tf.random_uniform_initializer(), 
                  **kwargs):
 
         super(VectorQuantizer, self).__init__(**kwargs)
         self.embed_dim = embed_dim
         self.num_embed = num_embed
         self.beta = beta
-        self.w_init = w_init 
+
+    def build(self, input_shape):
+        self.w_init = tf.random_uniform_initializer() 
         self.embedding = tf.Variable(initial_value=w_init(shape=(self.embed_dim, self.num_embed), dtype=tf.float32), trainable=True)
 
     def call(self, inputs):
@@ -161,7 +174,5 @@ class VectorQuantizer(layers.Layer):
             "embed_dim" : self.embed_dim,
             "num_embed" : self.num_embed,
             "beta" : self.beta,
-            "w_init" : self.w_init,
-            "embedding" : self.embedding
         })
         return config
