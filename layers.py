@@ -74,12 +74,11 @@ class Transformer(tf.keras.layers.Layer):
 
 	def get_config(self):
 		config = super(Transformer, self).get_config()
-		config.update({
-			'embed_dim' : self.embed_dim,
-			'ff_dim' : self.ff_dim,
-			'num_heads' : self.num_heads,
-			'act_ff' : self.act_ff,
-            'use_dropout' : self.use_dropout,
+		config.update({"embed_dim" : self.embed_dim,
+                       "ff_dim" : self.ff_dim,
+                       "num_heads" : self.num_heads,
+                       "act_ff" : self.act_ff, 
+                       "use_dropout" : self.use_dropout,
 		})
 		return config
 

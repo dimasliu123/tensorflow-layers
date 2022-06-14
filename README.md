@@ -1,2 +1,3 @@
-## Collections of Layers made in Tensorflow ##
-To be updated.
+## Collections of Layers made in Tensorflow
+Implementing Tensorflow/Keras layers.
+
