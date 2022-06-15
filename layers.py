@@ -12,8 +12,8 @@ class PositionEmbedding(tf.keras.layers.Layer):
         self.max_len = max_len
 
     def build(self, input_shape):
-        self.token_emb = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_dim)
-        self.pos_emb = tf.keras.layers.Embedding(input_dim=self.max_len, output_dim=self.embed_dim)
+        self.token_emb = tf.keras.layers.Embedding(input_dim = self.vocab_size, output_dim = self.embed_dim)
+        self.pos_emb = tf.keras.layers.Embedding(input_dim = self.max_len, output_dim = self.embed_dim)
 
     def call(self, inputs):
         maxLen = tf.shape(inputs)[-1]
@@ -98,7 +98,7 @@ class CausalTransformer(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         self.mha = tf.keras.layers.MultiHeadAttention(num_heads = self.num_heads, key_dim = self.embed_dim)
-        self.ffn = tf.keras.Sequential([ tf.keras.layers.Dense(self.ff_dim, activation = tf.nn.gelu if act_ff == "gelu" else tf.nn.relu), 
+        self.ffn = tf.keras.Sequential([ tf.keras.layers.Dense(self.ff_dim, activation = self.act_ff), 
                                          tf.keras.layers.Dense(self.embed_dim) ])
         self.norm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.norm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -114,7 +114,7 @@ class CausalTransformer(tf.keras.layers.Layer):
 
     def call(self, inputs):
         causal_mask = self.causal_attention_mask(inputs[0])
-        att = self.mha(query=inputs[0], key=inputs[1], key=inputs[2], attention_mask=causal_mask)
+        att = self.mha(query=inputs[0], key=inputs[1], value=inputs[2], attention_mask=causal_mask)
         x = self.norm1(att + inputs[0], inputs[1], inputs[2])
         ff = self.ffn(x)
         return self.norm2(x + ff)
